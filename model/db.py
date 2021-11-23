@@ -15,12 +15,13 @@ CREATE TABLE notes (
 noteid INTEGER PRIMARY KEY AUTOINCREMENT,
 author INTEGER NOT NULL,
 text VARCHAR NOT NULL,
+notetype VARCHAR NOT NULL,
 FOREIGN KEY (author) REFERENCES users(userid)
 );
 
 CREATE TABLE tags (
 tagid INTEGER PRIMARY KEY AUTOINCREMENT,
-text VARCHAR NOT NULL
+text VARCHAR NOT NULL UNIQUE
 );
 
 CREATE TABLE join_notes_tags (
@@ -28,7 +29,8 @@ noteid INTEGER NOT NULL,
 tagid INTEGER NOT NULL,
 
 FOREIGN KEY (noteid) REFERENCES notes(noteid),
-FOREIGN KEY (tagid) REFERENCES tags(tagid)
+FOREIGN KEY (tagid) REFERENCES tags(tagid),
+PRIMARY KEY (noteid, tagid)
 );
 
 CREATE TABLE cards (
@@ -82,7 +84,7 @@ COMMIT;
         """Execute a series of statements within a single transaction."""
         with self._connection as conn:
             conn.execute("BEGIN")
-            for statement in satements:
+            for statement in statements:
                 if isinstance(statement, (tuple, list)):
                     template, args = statement
                     conn.execute(template, args)
@@ -93,6 +95,21 @@ COMMIT;
     def execute_statement(self, statement, args=()):
         """Execute a single statement."""
         self.execute_statements([(statement, args)])
+
+    def nextkey(self, tablename: str) -> int:
+        """Obtain the next primary key to be generated in the given table."""
+        """Assumes the table uses an integer autoincrement primary key."""
+        cursor = self._connection.execute("SELECT seq FROM sqlite_sequence WHERE name = ?",
+                                          [tablename])
+        row = cursor.fetchone()
+        if row:
+            # https://sqlite.org/autoinc.html
+            # This could fail but I can't think how else to do this.
+            # TODO: Find a better solution.
+            return row["seq"] + 1
+        else:
+            return 1
+        
 
     def commit(self):
         self._connection.commit()

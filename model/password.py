@@ -10,15 +10,15 @@ ph = argon2.PasswordHasher(time_cost=5,
 class Password:
     _pwhash: str
 
-    def from_password(password: str):
+    def create(password: str):
         return Password(ph.hash(password))
 
     def verify(self, password: str) -> bool:
         try:
-            return ph.verify(self.pwhash, password)
+            return ph.verify(self._pwhash, password)
         except VerificationError:
             return False
 
     def serialize(self):
-        return self.pwhash
+        return self._pwhash
         
