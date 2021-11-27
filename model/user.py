@@ -16,13 +16,14 @@ class User:
     username: str
     password: Password
     email: str
+    # TODO: Add timezone support.
 
     def save(self, db: DB):
         assert(db.submit_query("SELECT userid FROM users WHERE userid = ?",
                                args=[self.userid],
                                one=True))
-        db.execute_statement("UPDATE users SET username = ?, password = password, email = ? WHERE userid = ?",
-                             [username, password.serialize(), email, userid])
+        db.execute_statement("UPDATE users SET username = ?, password = ?, email = ? WHERE userid = ?",
+                             [self.username, self.password.serialize(), self.email, self.userid])
 
     def hydrate(db: DB, userid: int):
         data = db.submit_query("SELECT * FROM users WHERE userid = ?",
@@ -40,6 +41,8 @@ class User:
                              [username, password.serialize(), email])
         user = User.hydrate(db, key)
         if not user:
+            # Just a backup in case db.nextkey fails.
+            # Might delete this later.
             user = User.load(db, username)
 
         return user

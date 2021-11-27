@@ -36,23 +36,25 @@ PRIMARY KEY (noteid, tagid)
 CREATE TABLE cards (
 cardid INTEGER PRIMARY KEY AUTOINCREMENT,
 noteid INTEGER NOT NULL,
-nextreview VARCHAR,
-interval REAL CHECK (interval > 0),
-ease REAL CHECK (ease > 1),
+userid INTEGER NOT NULL,
+template VARCHAR NOT NULL,
+due VARCHAR NOT NULL,
+ease REAL NOT NULL CHECK (ease > 1),
+interval INTEGER CHECK (interval > 0),
 
+FOREIGN KEY (userid) REFERENCES users(userid),
 FOREIGN KEY (noteid) REFERENCES notes(noteid)
 );
 
 CREATE TABLE reviews (
+reviewid INTEGER PRIMARY KEY AUTOINCREMENT,
 cardid INTEGER NOT NULL,
-userid INTEGER NOT NULL,
-reviewcount INTEGER NOT NULL CHECK (reviewcount >= 0),
-interval REAL NOT NULL CHECK (interval > 0),
-interval_deviation REAL DEFAULT 0.0,
+due VARCHAR,
+date VARCHAR NOT NULL,
+ease REAL NOT NULL,
+score REAL NOT NULL CHECK (score >= 0.0 AND score <= 1.0),
 
-FOREIGN KEY (cardid) REFERENCES cards(cardid),
-FOREIGN KEY (userid) REFERENCES users(userid),
-PRIMARY KEY (userid, cardid, reviewcount)
+FOREIGN KEY (cardid) REFERENCES cards(cardid)
 );
 
 COMMIT;
@@ -71,7 +73,7 @@ COMMIT;
     def submit_query(self, query: str, args=(), one=False):
         """Wrapper for queries which returns results intelligently."""
         assert(query.split()[0] == "SELECT",
-               "Use execute_statement for Data Modification Language statements. (anything that isn't select)")
+               "Use execute_statement(s) for Data Modification Language statements. (anything that isn't select)")
         cur = self._connection.execute(query, args)
         rv = [dict((cur.description[idx][0], value)
                    for idx, value in enumerate(row))
@@ -85,11 +87,11 @@ COMMIT;
         with self._connection as conn:
             conn.execute("BEGIN")
             for statement in statements:
-                if isinstance(statement, (tuple, list)):
+                if isinstance(statement, tuple):
                     template, args = statement
                     conn.execute(template, args)
                 else:
-                    assert(isinstance(statement, str))
+                    assert(isinstance(statement, str), "Invalid type: {}".format(type(statement)))
                     conn.execute(statement)
 
     def execute_statement(self, statement, args=()):
@@ -106,7 +108,7 @@ COMMIT;
             # https://sqlite.org/autoinc.html
             # This could fail but I can't think how else to do this.
             # TODO: Find a better solution.
-            return row["seq"] + 1
+            return row[0] + 1
         else:
             return 1
         
